@@ -1,0 +1,194 @@
+---
+title: "Cohen's Kappa"
+author: "Alison Telford"
+date: '2022-11-04'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, error = FALSE, warning = FALSE)
+list.of.packages <- c("tidyverse", "devtools", "kableExtra", "readxl")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)){install.packages(new.packages)}
+suppressMessages(invisible(lapply(list.of.packages, require, character.only = TRUE)))
+```
+
+## What is it?
+
+Cohen’s Kappa is a statistic which measures the inter-rater variability for qualitative items. It can be considered the proportion of agreement corrected for chance (Warrens, 2015).
+
+The formula to calculate Cohen’s Kappa is
+$$
+\kappa = \frac{p_0 - p_e}{1 - p_e}
+$$
+where $p_0$ is the observed probability of agreement and $p_e$ is the probability of agreement by chance. Now, $p_0$ is calculated as
+$$
+p_0 = \frac{N_{agreed}}{N}
+$$
+where $N_{agreed}$ is the number of times the raters agreed (provided the same score) and $N$ is the total number of ratings.
+
+The probability $p_e$ is calculated as 
+$$
+p_e = \frac{1}{N^2} \sum_k n_{k1}n_{k2}
+$$
+where $k$ is the total number of categories the raters can choose from. Below are some examples for $k=2$ categories:
+
+- {Heads, Tails}
+- {Yes, No}
+- {True, False}
+- {0,1}
+
+Below are some examples for $k=3$ categories:
+
+- {0,1,2}
+- {Agree, Not Sure, Disagree}
+- {3,4,5}
+
+The $n_{k1}$ and $n_{k2}$ values in the $p_e$ equation are the total number of times rater 1 or 2 has given the rating $k$.
+
+### Example of Calculating Kappa
+Here is a small example of how to calculate Kappa. There are two raters each provide three scores (thus $N=3$) of either “Yes” or “No” (thus $k=2$).
+
+```{r}
+tbl = data.frame(
+  'Rater 1' = c(
+    'Yes',
+    'Yes',
+    'No'
+  ),
+  'Rater 2' = c(
+    'Yes',
+    'No',
+    'No'
+  ),
+  'Agreement' = c(
+    'Agree',
+    'Disagree',
+    'Disagree'
+  ),
+  check.names = F
+)
+kbl(
+  tbl, 
+  booktabs = T,
+  align = 'c',
+  centering = T
+) %>% 
+  kable_styling(bootstrap_options = c("striped"))
+```
+
+Firstly, to calculate $p_0$, we calculate $N_{agree}$ which is the number of times the two Raters agreed, or in other words we can simple count the number of “Agreed” in the Agreement column above. Thus 
+$$
+N_{agreed} = 2
+$$
+which gives us
+$$
+\begin{align}
+p_0 &= \frac{2}{3} \\
+&= 0.67
+\end{align}
+$$
+Next, to calculate $p_e$, we shall assign $k=1$ to be “Yes” and k=2 to be “No”, thus:
+
+- $n_{11}$ is the number of times Rater 1 has given a score of “Yes”,
+- $n_{12}$ is the number of times Rater 2 has given a score of “Yes”,
+- $n_{21}$ is the number of times Rater 1 has given a score of “No” and
+- $n_{22}$ is the number of times Rater 2 has given a score of “No”.
+
+Thus, we can calculate these to be:
+
+- $n_{11} = 2$
+- $n_{12} = 1$
+- $n_{21} = 1$
+- $n_{22} = 2$
+
+and substituting them into the $p_e$ equation gives:
+
+$$
+\begin{align}
+p_e &= \frac{1}{3^2} (2 \times 1 + 1 \times 2) \\
+&= \frac{4}{9} \\
+&= 0.44
+\end{align}
+$$
+Thus we can substitute both $p_0$ and $p_e$ into the equation for Cohen’s Kappa:
+$$
+\begin{align}
+\kappa &= \frac{0.67 - 0.44}{1 - 0.44} \\
+&= \frac{0.23}{0.56} \\
+&= 0.41
+\end{align}
+$$
+
+## What is agreement by chance?
+Agreement by chance occurs when two raters have high agreement but actually the agreement was unintentional. Let’s consider the following example:
+
+Imagine two people flipping a coin independently and recording their result as “heads” or “tails” 10 times. We can simulate this example easily in R using the following code:
+
+```{r, echo = T}
+set.seed(10)
+Rater1 = sample(c("Heads", "Tails"), 10, replace = T)
+set.seed(11)
+Rater2 = sample(c("Heads", "Tails"), 10, replace = T)
+```
+
+This code returns the following observations for each rater:
+
+```{r}
+tbl = data.frame(
+  'Rater 1' = Rater1,
+  'Rater 2' = Rater2,
+  check.names = F
+) %>% 
+  as.tibble() %>% 
+  mutate(Agreement = ifelse(`Rater 1` == `Rater 2`,
+                            'Agree',
+                            'Disagree'))
+kbl(
+  tbl, 
+  booktabs = T,
+  align = 'c',
+  centering = T
+) %>% 
+  kable_styling(bootstrap_options = c("striped"))
+```
+
+Here you can see that the observed probability of agreement is 40%, but this level of agreement occurred entirely by chance. 
+
+Therefore, you can see that simply calculating the observed percentage of agreement is not enough to assess the true underlying agreement. Cohen’s Kappa however takes into consideration the probability of agreement by chance, thereby creating a more robust measurement of agreement.
+
+## How do I interpret the Kappa value?
+A benchmark of interpretation from the literature (Landis and Koch, 1977) which is widely used is as follows: a Kappa value of 
+
+- 0 to 0.2 as slight agreement,
+- 0.2 to 0.4 as fair, 
+- 0.4 to 0.6 as moderate, 
+- 0.6 to 0.8 as substantial and 
+- 0.8 to 1 as almost perfect agreement.
+
+## BEWARE: The negative Kappa
+It is certainly possible that the value of Cohen’s Kappa can be negative. Interpreting this is not as straightforward as simply poor agreement. To consider the interpretation of the negative Kappa, we need to return to the formula of Cohen’s Kappa;
+$$
+\kappa = \frac{p_0 - p_e}{1 - p_e}
+$$
+Note that Kappa is proportional to the difference between the observed probability of agreement and the probability of agreement by chance. This means that we will observe a negative Kappa whenever the probability of agreement by chance is larger than the observed probability of agreement. 
+
+Let’s return to our flipping a coin example. We observed a probability of agreement of 40% or 0.40. To calculate the probability of agreement by chance we need to use the formula;
+$$
+\begin{align}
+p_e &= \frac{1}{100} (5 \times 3 + 5 \times 7) \\
+&= \frac{50}{100} \\ 
+&= 0.5
+\end{align}
+$$
+Giving a probability of agreement by chance to be 50% or 0.50 - larger than our observed probability of agreement. Hence for this example we would obtain a negative value for Kappa. In fact, the exact value for Kappa in this example would be -0.2.
+
+Thus, a negative Kappa does not necessarily suggest that the agreement is terrible, it could mean that there is no effective agreement between the two raters, i.e. the observed agreement is considered agreement by chance instead of true agreement. Of course, this will happen more commonly when there are less categories for the raters to choose from, i.e. Heads or Tails, 0 or 1, etc. (Brennan and Silman, 1992) suggests that the only meaningful interpretation in the situation of a negative Kappa is that the level of agreement is what would be expected by chance alone.
+
+## References and Further Reading
+The info box below provides some further useful reading on Cohen’s Kappa. It is a widely published statistic for interpreting inter-rater agreement, (Warrens, 2015) gives a good description of different ways to consider the Cohen’s Kappa statistic and (Sun, 2011) also gives a good all round introduction into the statistic.
+
+- Brennan, P., Silman, A., 1992. Statistical methods for assessing observer variability in clinical measures. BMJ 304, 1491–1494.
+- Landis, J.R., Koch, G.G., 1977. The Measurement of Observer Agreement for Categorical Data. Biometrics 33, 159.
+- Sun, S., 2011. Meta-analysis of Cohen’s kappa. Health Serv. Outcomes Res. Methodol. 11. 
+- Warrens, M., 2015. Five Ways to Look at Cohen’s Kappa. J. Psychol. Psychother. 05.
