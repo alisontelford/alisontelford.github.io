@@ -43,5 +43,5 @@ on the type of data you are comparing.
 ## Non-Continuous Data
 
 - Overall Percentage Agreement
-- Cohen's Kappa
+- [Cohen's Kappa](https://alisontelford.github.io/Cohens_Kappa.html)
 - Krippendorf's Alpha
