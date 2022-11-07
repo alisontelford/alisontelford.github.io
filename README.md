@@ -4,3 +4,9 @@ If you've navigated your way to my page, welcome! This is where I store all my k
 
 ## About Me
 I obtained my PhD in statistics at the University of Leeds in 2019 and have worked as a Biostatistician for ~2 years. Throughout my undergraduate, PhD and work as a Biostatistician I have used and honed my coding skills in R. I also play badminton and am an avid archer ;)
+
+## Statistics Help Pages
+
+<a href="https://www.w3schools.com/">Agreement Statistics</a>
+
+## R Help Pages
