@@ -7,6 +7,6 @@ I obtained my PhD in statistics at the University of Leeds in 2019 and have work
 
 ## Statistics Help Pages
 
-<a href="https://www.w3schools.com/">Agreement Statistics</a>
+<a href="https://alisontelford.github.io/Agreement_Statistics.html">Agreement Statistics</a>
 
 ## R Help Pages
