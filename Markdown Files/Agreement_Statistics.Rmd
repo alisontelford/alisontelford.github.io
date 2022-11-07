@@ -1,0 +1,47 @@
+---
+title: "Agreement Statistics"
+author: "Alison Telford"
+date: '2022-11-07'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, error = FALSE, warning = FALSE)
+list.of.packages <- c("tidyverse", "devtools", "kableExtra", "readxl")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)){install.packages(new.packages)}
+suppressMessages(invisible(lapply(list.of.packages, require, character.only = TRUE)))
+```
+
+# About
+
+Agreement statistics are a fleet of tests/measurements which provide an answer
+to the question: "how similar are my two data sets/groups of data?". I like to 
+compare this question to the one answered whilst performing a
+standard two sample t-test. In a t-test we usually want to know: "how different 
+are my two data sets/groups of data?". Of course, it's important to remember
+that in statistics these two questions are very different and you can't simply
+use a t-test to answer the former question.
+
+The question of "how similar are my two data sets?" is a question often asked
+when you are wanting to compare the performance of a drug or medical device to
+a predicate or industry standard. You want to show that your new drug or 
+medical device performs just as well as the predicate or industry standard.
+
+There are many ways of answering the question of similarity which also depend 
+on the type of data you are comparing.
+
+## Continuous Data
+
+- Bland Altman Analysis
+- TOST test
+- Intra-class Correlation Coefficient (ICC)
+- Individual Equivalence Coefficient (IEC)
+- Total Deviation Index (TDI)
+- Coverage Probability (CP)
+
+## Non-Continuous Data
+
+- Overall Percentage Agreement
+- Cohen's Kappa
+- Krippendorf's Alpha
