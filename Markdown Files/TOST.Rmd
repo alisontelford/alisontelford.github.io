@@ -1,0 +1,332 @@
+---
+title: "Two One-Sided Test (TOST)"
+author: "Alison Telford"
+date: '2023-01-10'
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, error = FALSE, warning = FALSE)
+list.of.packages <- c("tidyverse", "devtools", "kableExtra", "readxl")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)){install.packages(new.packages)}
+suppressMessages(invisible(lapply(list.of.packages, require, character.only = TRUE)))
+```
+
+# Introduction
+
+The Two One-Sided Test or TOST essentially does what it says on the tin. It
+is basically the same as performing two one-sided t-tests or a 
+non-parametric equivalent. It's purpose is to statistically test whether
+two paired or non-paired samples can be deemed equivalent or not.
+
+# Theory
+
+## Non-Paired Samples
+
+Consider two independent samples of $n$ observations from some population, 
+namely
+$$
+x_1, \ldots, x_n \\
+y_1, \ldots, y_n
+$$
+
+We want to test to see whether the mean of sample 1 is equivalent to the mean
+of sample 2. Crudely, we could construct the hypothesis test as follows;
+$$
+\textrm{H}_0: \mu_x \neq \mu_y \\
+\textrm{vs} \\
+\textrm{H}_1: \mu_x = \mu_y
+$$
+where the null hypothesis is that the means are different and thus rejecting
+the null hypothesis would conclude equivalence. However, in this setup, there
+are infinitely many null distributions which would make testing this 
+hypothesis impossible.
+
+Instead, consider formulating two one-sided hypothesis tests for some
+threshold $\delta$ as follows;
+
+\begin{itemize}
+\item{
+  $$
+  \textrm{H}_0: \mu_x - \mu_y \geq \delta \\
+  \textrm{vs} \\
+  \textrm{H}_1: \mu_x - \mu_y < \delta
+  $$
+}
+\item{
+  $$
+  \textrm{H}_0: \mu_x - \mu_y \leq -\delta \\
+  \textrm{vs} \\
+  \textrm{H}_1: \mu_x - \mu_y > -\delta
+  $$
+}
+\end{itemize}
+Then a rejection of both null hypotheses would conclude
+$$
+-\delta < \mu_x - \mu_y < \delta
+$$
+and for small enough $\delta$ we can therefore conclude equivalence. 
+
+To test the hypotheses two one-sided two sample hypothesis tests can be 
+performed. Note that to conclude equivalence at 5% significance threshold
+both p-values would need to be less than 0.025 using the Bonferroni correction.
+
+## Paired Samples
+
+Consider two dependent samples of $n$ observations from some population, 
+namely
+$$
+x_1, \ldots, x_n \\
+y_1, \ldots, y_n
+$$
+and calculate the difference between each pair such that 
+$$
+x_i - y_i = d_i ~~~~~~~~~ i = 1,\ldots, n.
+$$
+
+The two one-sided hypotheses to test for some threshold $\delta$ therefore 
+becomes
+\begin{itemize}
+\item{
+  $$
+  \textrm{H}_0: \mu_d \geq \delta \\
+  \textrm{vs} \\
+  \textrm{H}_1: \mu_d < \delta
+  $$
+}
+\item{
+  $$
+  \textrm{H}_0: \mu_d \leq -\delta \\
+  \textrm{vs} \\
+  \textrm{H}_1: \mu_d > -\delta
+  $$
+}
+\end{itemize}
+Then a rejection of both null hypotheses would conclude
+$$
+-\delta < \mu_d < \delta
+$$
+and for small enough $\delta$ we can therefore conclude equivalence. 
+
+To test the hypotheses two one-sided one sample hypothesis tests can be 
+performed. Note that to conclude equivalence at 5% significance threshold
+both p-values would need to be less than 0.025 using the Bonferroni correction.
+
+# Power Calculations
+
+## Theory
+
+### Non-Paired Samples
+
+The power of a hypothesis test is calculated as
+$$
+\textrm{Pr}\{\textrm{Reject H}_0 | \textrm{H}_0 \textrm{ is false}\}.
+$$
+
+If we are performing two one-sided two-sample $t$-tests, this can be equated to
+$$
+\textrm{Pr}\{t_1 < t_{\alpha, 2n-2} \cap t_2 > t_{1-\alpha, 2n-2}| -\delta < \mu_x - \mu_y < \delta\}
+$$
+where
+$$
+t_1 = \frac{\bar{x} - \bar{y} - \delta}{\frac{\hat{s}}{\sqrt{n/2}}}, \\
+t_2 = \frac{\bar{x} - \bar{y} + \delta}{\frac{\hat{s}}{\sqrt{n/2}}},
+$$
+$$
+\hat{s}^2 = \frac{(n-1)s_x^2 + (n-1)s_y^2}{2n-2},
+$$
+and $t_{\alpha, 2n-2}$ represents the $\alpha$th quantile
+of the $t$ distribution with $2n-2$ degrees of freedom.
+
+Under the alternative hypothesis, we assume that $\mu_x - \mu_y = 0$, thus 
+$$
+t_1 = \frac{-\delta}{\frac{\hat{s}}{\sqrt{n/2}}}, \\
+t_2 = \frac{\delta}{\frac{\hat{s}}{\sqrt{n/2}}}.
+$$
+It can therefore be concluded that
+$$
+t_1 \sim N\left(\frac{-\delta}{\sigma/\sqrt{n/2}}, 1\right) \\
+t_2 \sim N\left(\frac{\delta}{\sigma/\sqrt{n/2}}, 1\right).
+$$
+
+Let $mt_1$ and $mt_2$ be the means of $t_1$ and $t_2$ respectively and
+$T = t_1 - mt_1$. Also note that $t_1 = t_2 - 2mt_2$ and $mt_1 = -mt_2$. Thus,
+\begin{align}
+&T = t_1 - mt_1 \\
+\implies&T = t_2 - 2mt_2 - mt_1 \\
+\implies&T = t_2 - 2mt_2 + mt_2 \\
+\implies&T = t_2 - mt_2.
+\end{align}
+
+If $t_{1-\alpha, 2n-2} = t_c$, the $(1-\alpha)\%$ critical value of the 
+$t$-distribution, then $t_{\alpha, 2n-2} = -t_c$ due to symmetry. Thus,
+\begin{align}
+&\textrm{Pr}\{t_1 < t_{\alpha, 2n-2} \cap t_2 > t_{1-\alpha, 2n-2}\} \\
+&=\textrm{Pr}\{T < -mt_1 - t_c \cap T > -mt_2 + t_c\} \\
+&=\textrm{Pr}\{T < mt_2 - t_c \cap T > mt_1 + t_c\} \\
+&=\textrm{Pr}\{T < mt_2 - t_c\} - \textrm{Pr}\{T < mt_1 + t_c\}.
+\end{align}
+As T follows a standard normal distribution, we can calculate this probability
+using the non-central $t$ distribution.
+
+### Paired Samples
+
+The power of a hypothesis test is calculated as
+$$
+\textrm{Pr}\{\textrm{Reject H}_0 | \textrm{H}_0 \textrm{ is false}\}.
+$$
+
+If we are performing two one-sided one-sample $t$-tests, this can be equated to
+$$
+\textrm{Pr}\{t_1 < t_{\alpha, n-1} \cap t_2 > t_{1-\alpha, n-1}| -\delta < \mu_d < \delta\}
+$$
+where
+$$
+t_1 = \frac{\bar{d} - \delta}{\frac{s_d}{\sqrt{n}}}, \\
+t_2 = \frac{\bar{d} + \delta}{\frac{s_d}{\sqrt{n}}},
+$$
+and $t_{\alpha, n-1}$ represents the $\alpha$th quantile
+of the $t$ distribution with $n-1$ degrees of freedom.
+
+Under the alternative hypothesis, we assume that $\mu_d = 0$, thus 
+$$
+t_1 = \frac{-\delta}{\frac{s_d}{\sqrt{n}}}, \\
+t_2 = \frac{\delta}{\frac{s_d}{\sqrt{n}}}.
+$$
+It can therefore be concluded that
+$$
+t_1 \sim N\left(\frac{-\delta}{\sigma/\sqrt{n}}, 1\right) \\
+t_2 \sim N\left(\frac{\delta}{\sigma/\sqrt{n}}, 1\right).
+$$
+
+Let $mt_1$ and $mt_2$ be the means of $t_1$ and $t_2$ respectively and
+$T = t_1 - mt_1$. Also note that $t_1 = t_2 - 2mt_2$ and $mt_1 = -mt_2$. Thus,
+\begin{align}
+&T = t_1 - mt_1 \\
+\implies&T = t_2 - 2mt_2 - mt_1 \\
+\implies&T = t_2 - 2mt_2 + mt_2 \\
+\implies&T = t_2 - mt_2.
+\end{align}
+
+If $t_{1-\alpha, n-1} = t_c$, the $(1-\alpha)\%$ critical value of the 
+$t$-distribution, then $t_{\alpha, n-1} = -t_c$ due to symmetry. Thus,
+\begin{align}
+&\textrm{Pr}\{t_1 < t_{\alpha, n-1} \cap t_2 > t_{1-\alpha, n-1}\} \\
+&=\textrm{Pr}\{T < -mt_1 - t_c \cap T > -mt_2 + t_c\} \\
+&=\textrm{Pr}\{T < mt_2 - t_c \cap T > mt_1 + t_c\} \\
+&=\textrm{Pr}\{T < mt_2 - t_c\} - \textrm{Pr}\{T < mt_1 + t_c\}.
+\end{align}
+As T follows a standard normal distribution, we can calculate this probability
+using the non-central $t$ distribution.
+
+# Example
+
+```{r, echo = T}
+#Define an Acceptance Criteria a-priori
+AC = 0.5
+#Set the sample size
+n = 100
+#Simulate two sets of data from standard normal distribution
+set.seed(1)
+x = rnorm(n)
+set.seed(2)
+y = rnorm(n)
+#Create a data frame with the two simulated data sets
+df = data.frame(x, y)
+#Calculate the differences and the means and append to df
+df = df %>%   
+  mutate(diffs = x - y,         
+         means = (x+y)/2)
+#Calculate the bias
+Bias = mean(df$diffs)
+#Calculate the TOST p-values.
+pvalue_1 = t.test(df$diffs - AC, alternative = "less")$p.val
+pvalue_2 = t.test(df$diffs + AC, alternative = "greater")$p.val
+print(pvalue_1)
+print(pvalue_2)
+```
+
+The maximum p-value is therefore `r max(pvalue_1, pvalue_2)` and because both
+are less than 0.025 we can conclude equivalence at 5% level.
+
+# Graphically Visualising the TOST
+
+It is possible for paired data, without performing any statistical tests, 
+to visually assess whether the TOST will conclude equivalence. 
+
+The TOST procedure works by not only considering the value of the bias itself 
+but also it's standard error or uncertainty. Thus if the 95\% confidence 
+interval for the bias lies within $[-\delta, \delta]$, equivalence is concluded
+at the 5\% significance level.
+
+It is then easy to assess this using a Bland-Altman plot, e.g. plotting the 
+mean of each paired observation against the difference of each paired
+observation.
+
+```{r, echo = T}
+#Calculate the 95% confidence interval for the bias
+bias_lower = Bias - qt(0.975, df = n-1)*sd(df$diffs)/sqrt(n)
+bias_upper = Bias + qt(0.975, df = n-1)*sd(df$diffs)/sqrt(n)
+ggplot(df, aes(x = means, y = diffs)) +  
+  geom_point() +  
+  geom_hline(yintercept = Bias) +  
+  geom_hline(yintercept = bias_lower, col = 2) +  
+  geom_hline(yintercept = bias_upper, col = 2) +  
+  geom_hline(yintercept = -AC, col = 3) +  
+  geom_hline(yintercept = AC, col = 3) +  
+  annotate("rect", xmin = -Inf, xmax = Inf, 
+           ymin = bias_lower, ymax = bias_upper,       
+           fill = 2, alpha = 0.4) +  
+  annotate("rect", xmin = -Inf, xmax = Inf,         
+           ymin = -AC, ymax = AC,         
+           fill = 3, alpha = 0.4) +  
+  labs(x = "Mean of x and y",       
+       y = "Difference (x - y)")
+```
+
+The 95% confidence interval for the bias is entirely within $[-\delta, \delta]$, 
+thus we know - without needing to perform a hypothesis test - that the
+TOST test will pass, and we can conclude equivalence at 5\% level.
+
+# Calculating Delta
+
+One can calculate an appropriate value for $\delta$ by calculating the 
+standard error of the bias using previous data and adjusting it based on the 
+sample size of the new data. Thus an expected confidence interval for the bias
+can be calculated if the variability was the same as before.
+
+If the variability of the previous data was accepted to be reasonable, then
+we could use the expected confidence interval of the bias adjusting for
+bias = 0 to be the $[-\delta, \delta]$.
+
+# R Code
+
+The following function can be applied in R to calculate the power of the 
+TOST. Note that this function can also be inverted to calculate the sample
+size to achieve a required power.
+
+```{r, echo = T}
+TOST_power = function(N, std, delta, alpha, type = 'one.sample'){
+  if (type == 'one.sample'){
+    se = std/sqrt(N)
+    mt1 = -delta/se
+    mt2 = delta/se
+    tc = qt(1 - alpha, df = N-1, lower.tail = T)
+    Power = pt(-tc, df = N-1, ncp = -mt2) - pt(tc, df = N-1, ncp = -mt1)
+  }else{
+    if (type == 'two.sample'){
+      se = std*sqrt(2)/sqrt(N)
+      mt1 = -delta/se
+      mt2 = delta/se
+      tc = qt(1 - alpha, df = 2*N-2, lower.tail = T)
+      Power = pt(-tc, df = 2*N-2, ncp = -mt2) - pt(tc, df = 2*N-2, ncp = -mt1)
+    }
+  }
+  Power[Power<0] = 0
+  Power
+}
+```
