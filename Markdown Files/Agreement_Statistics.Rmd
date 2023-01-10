@@ -34,8 +34,9 @@ on the type of data you are comparing.
 ## Continuous Data
 
 - Bland Altman Analysis
-- TOST test
+- [TOST](https://alisontelford.github.io/TOST.html)
 - Intra-class Correlation Coefficient (ICC)
+- Concordance Correlation Coefficient (CCC)
 - Individual Equivalence Coefficient (IEC)
 - Total Deviation Index (TDI)
 - Coverage Probability (CP)
