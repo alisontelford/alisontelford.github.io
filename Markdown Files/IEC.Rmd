@@ -1,0 +1,146 @@
+---
+title: "Individual Equivalence Coefficient (IEC)"
+author: "Alison Telford"
+date: '2023-01-10'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, error = FALSE, warning = FALSE)
+list.of.packages <- c("tidyverse", "devtools", "kableExtra", "readxl")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)){install.packages(new.packages)}
+suppressMessages(invisible(lapply(list.of.packages, require, character.only = TRUE)))
+```
+
+# What is it?
+
+The Individual Equivalence Coefficient (IEC) is an FDA approved statistic for 
+measuring the inter-rater variability between two or more raters. The statistic 
+can sometimes be called the Individual Bioequivalence Coefficient (IBC) if there 
+are only two raters, however the calculations are exactly the same.
+
+The general idea for using this statistic is to assess ‘interchangeability’ 
+with a reference method.
+
+# What data do I need?
+
+Consider a reference method $R$ and consider there to be $J\geq2$ new methods. 
+You will need repeated measurements from the reference method $R$ and at least 
+one measurement from each of the new methods. 
+
+## Example
+
+Consider a situation where there exists a clinical expert who can be considered the ‘gold standard’ rater. We then want to compare three new operators to this clinical expert to assess how well the new operators work and whether they can be considered ‘interchangeable’.
+
+In order to calculate the IEC, you would need the clinical expert and all operators to analyse the same cases. The clinical expert should also analyse the case more than once.
+
+Thus you would have repeated measurements from the clinical expert, and at least one measurement from each of the new operators.
+
+The table below provides an example of what would be required.
+
+```{r}
+tbl = data.frame(
+  R1 = c(758, 811, 774, 868),
+  R2 = c(759, 806, 761, 868),
+  J1 = c(683, 808, 786, 902),
+  J2 = c(747, 832, 728, 876),
+  J3 = c(775, 793, 780, 923)
+)
+kbl(tbl, align = 'c', booktabs = T) %>% 
+  kable_styling('striped')
+```
+
+# How do I calculate it?
+
+The formula to calculate the IEC is 
+$$
+IEC = \frac{\sum_{j=1}^J (\mu_j - \mu_R)^2 - \sum_{j=1}^J \sigma_{D_{jR}}^2 + \sum_{j=1}^J \sigma_{Wj}^2 - J\sigma_{WJ}^2}{J\sigma_{WR}^2}
+$$
+where
+$$
+\sigma_{D_{jR}}^2 = (\sigma_{Bj} - \sigma_{BR})^2 + 2(1-\rho_{\mu_j})\sigma_{Bj}\sigma_{BR}
+$$
+and
+- $\mu_R$ represents the mean value of the reference method
+- $\mu_j$ represents the mean value of the new method $J=j$
+- $\sigma_{WR}^2$ represents the within-subject variance for the reference method
+- $\sigma_{Wj}^2$ represents the within-subject variance between the reference method and the new method $J=j$
+- $\sigma_{BR}^2$ represents the between-subject variance for the reference method
+- $\sigma_{Bj}^2$ represents the between-subject variance for the new method $J=j$
+- $\rho_{\mu_j}$ represents the correlation between the reference method and the new method $J=j$.
+
+## Example
+
+Consider a dummy data set created below:
+
+```{r, echo = T}
+set.seed(1)
+Truth = rnorm(100, 800, 50)
+
+set.seed(2)
+R1 = Truth + rnorm(100, 0, 10)
+set.seed(3)
+R2 = Truth + rnorm(100, 0, 10)
+
+set.seed(4)
+J1 = Truth + rnorm(100, 10, 20)
+set.seed(5)
+J2 = Truth + rnorm(100, -5, 20)
+set.seed(6)
+J3 = Truth + rnorm(100, 0, 25)
+
+data = data.frame(R1, R2, J1, J2, J3)
+```
+
+In this example we have one reference method with two repeats and three new 
+methods to compare. I have created a function in R which will 
+calculate the IEC. See below:
+
+```{r}
+individual_equivalence_coefficient <- 
+  function(df) {
+    # Calculate the number of columns
+    n_cols = ncol(df)
+    # Calculate the variances of all columns, i.e. the 
+    # between subject variances
+    variances = apply(df, 2, var)
+    for (i in 1:(n_cols - 1)){
+      df[[paste0('within_subject_var', i)]] =
+        apply(df[, c(1, i + 1)], 1, var)
+    }
+    # Calculate the means of all columns
+    means = apply(df, 2, mean)
+    cor = numeric(n_cols - 2)
+    sigma_squared_d = numeric(n_cols - 2)
+    for (i in 1:(n_cols - 2)){
+      # Calculate the correlation between reference and treatment
+      cor[i] = cor(df[, 1], df[, i + 2], method = 'spearman')
+      # Calculate the sigma squared D
+      sigma_squared_d[i] = 
+        (sqrt(variances[i]) - sqrt(variances[1]))^2 +
+        2 * (1 - cor[i]) * sqrt(variances[i]) * sqrt(variances[1])
+    }
+    # Calculate the IEC
+    iec = (sum((means[c(3:n_cols)] - means[1])^2) +
+      sum(sigma_squared_d) +
+      sum(means[c((n_cols + 2):(2*n_cols - 1))]) - 
+      ((n_cols - 2) * means[n_cols + 1])) / ((n_cols - 2) * means[n_cols + 1])
+    return(as.numeric(iec))
+  }
+```
+
+We can calculate the IEC of the dummy data set using
+```{r}
+iec = individual_equivalence_coefficient(data)
+```
+
+It's value is IEC = `r iec`.
+
+# How do I interpret the IEC?
+The good news is that the FDA have provided an ‘acceptance criteria' for which 
+to apply to the IEC. The following reference: 
+https://www.fda.gov/media/70958/download suggests that we can conclude 
+interchangeability if IEC $\leq$ 2.494827. Thus in the example above, we 
+cannot conclude interchangeability.
+
