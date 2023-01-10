@@ -37,7 +37,7 @@ on the type of data you are comparing.
 - [TOST](https://alisontelford.github.io/TOST.html)
 - Intra-class Correlation Coefficient (ICC)
 - Concordance Correlation Coefficient (CCC)
-- Individual Equivalence Coefficient (IEC)
+- [Individual Equivalence Coefficient (IEC)](https://alisontelford.github.io/IEC.html)
 - Total Deviation Index (TDI)
 - Coverage Probability (CP)
 
