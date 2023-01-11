@@ -1,0 +1,138 @@
+---
+title: "Total Deviation Index (TDI) and Coverage Probability (CP)"
+author: "Alison Telford"
+date: '2023-01-10'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, error = FALSE, warning = FALSE)
+list.of.packages <- c("tidyverse", "devtools", "kableExtra", "readxl")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)){install.packages(new.packages)}
+suppressMessages(invisible(lapply(list.of.packages, require, character.only = TRUE)))
+```
+
+# Definitions
+
+## Total Deviation Index (TDI)
+
+The Total Deviation Index (TDI) describes a boundary, $\kappa$, such that 
+$100p\%$ of observations are less than $\kappa$.
+
+## Coverage Probability (CP)
+
+The Coverage Probability (CP) can be considered the inverse of the TDI. It is 
+the proportion, $p$, of observations that are less than a pre-specified 
+boundary $\kappa$.
+
+# Using the TDI and CP to Assess Agreement
+
+In order to use the statistics for assessing agreement, acceptance criteria
+is required. The acceptance criteria for the TDI is determined a priori based on 
+biologically and analytically relevant criteria. 
+
+Parameter $p$ is usually chosen to be 0.90 and can be used as an input in the 
+TDI calculation to calculate the boundary $\kappa$ which can then be compared
+to the acceptance criteria. Usually, if both $\kappa$ and it's upper 95\% 
+confidence limit is less than the acceptance criteria, agreement can be 
+concluded.
+
+The acceptance criteria can also be used as an input in the calculation of CP 
+to calculate $p$. If the value of $p$ and it's lower 95\% confidence limit is
+greater than 0.90, agreement can be concluded.
+
+Note that, one can choose to calculate either the TDI or CP to assess agreement
+as if one concludes agreement, the other will too. Although it seems common to
+report both statistics.
+
+# R Code
+
+```{r, echo = T}
+Agreement = function(df, p, k, alpha=0.05, space = 'arithmetic'){
+  # Calculate the differences
+  diffs = df[,2] - df[,1]
+  if (space == 'Percentage'){
+    diffs = 100*(diffs/((df[,1] + df[,2])/2))
+  }
+  n = length(diffs)
+  e2 = sum(diffs^2) / (n - 1)
+  tdi = qnorm(1 - ((1 - p) / 2)) * sqrt(e2)
+  if (e2 != 0){
+    w = log(e2)
+  }else{
+    return(c(tdi, NA, NA, NA))
+  }
+  means = df %>% 
+    summarise(across(everything(), mean))
+  mu_d = means[,1] - means[,2]
+  d2 = mu_d^2
+  if (n < 4){
+    return(c(tdi, NA, NA, NA))
+  }
+  sd2 = (sum(diffs^2) / n - d2) * (n / (n - 3))
+  d2_s2 = (d2 / sd2)
+  s_w = sqrt(2 * (1 - ((d2^2) / (e2^2))) / (n - 2))
+  w_u = w + qnorm(1 - alpha) * s_w
+  e2_u = exp(w_u)
+  tdi_u = qnorm(1 - ((1 - p) / 2)) * sqrt(e2_u)
+  cp = pchisq((k ** 2) / sd2, 1, d2_s2)
+  sd = sqrt(sd2)
+  kpm = (k + mu_d) / sd
+  kmm = (k - mu_d) / sd
+  s_t = (
+    (
+      ((dnorm(-kpm) - dnorm(kmm))^2) +
+        (((kmm * dnorm(kmm)) + (kpm * dnorm(-kpm)))^2) / 2
+    ) /
+      ((n - 3) * (cp^2) * ((1 - cp)^2))
+  )
+  s_t = sqrt(s_t)
+  t = log(cp / (1 - cp))
+  t_l = t - qnorm(1 - alpha) * s_t
+  cp_l = exp(t_l) / (1 + exp(t_l))
+  return(c(tdi, tdi_u, cp, cp_l))
+}
+```
+
+# Example
+
+The industry standard for measuring liver inflammation is performed using 
+medical device $A$. A new medical device, $B$, has been created which also 
+measures liver inflammation, but measures it in a more cost effective way. In
+order for the medical device to be accepted into a clinical care pathway, it
+needs to measure liver inflammation as well as the industry standard. You 
+choose to show that medical device $B$ is equivalent to medical device $A$ at
+measuring liver inflammation.
+
+It is decided that equivalence between devices will be concluded if the TDI
+is less than 30ms.
+
+A total of 100 individuals have had their liver inflammation measured using
+both medical device $A$ and $B$. To test for equivalence between the medical
+devices, an acceptance criteria of 30ms on the TDI is used.
+
+```{r, echo = T}
+set.seed(1)
+# Create some dummy data
+A = rnorm(100, 800, 50)
+B = A + rnorm(100, 0, 10)
+# Create a data frame containing the data
+df = data.frame(A, B)
+# Calculate the TDI and CP
+TDI = Agreement(df, 0.9, 30)[1]
+TDI_upper = Agreement(df, 0.9, 30)[2]
+CP = Agreement(df, 0.9, 30)[3]
+CP_lower = Agreement(df, 0.9, 30)[4]
+```
+
+Running the above code gives:
+
+- TDI = `r TDI`
+- TDI Upper 95\% confidence limit = `r TDI_upper`
+- CP = `r CP`
+- CP Lower 95\% confidence limit = `r CP_lower`.
+
+Thus as both the TDI and upper 95\% confidence limit of the TDI is less than 30,
+agreement can be concluded. Equally because both the CP and lower 95% confidence
+limit of the CP is greater than 0.90, agreement can be concluded.
