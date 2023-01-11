@@ -29,7 +29,10 @@ a predicate or industry standard. You want to show that your new drug or
 medical device performs just as well as the predicate or industry standard.
 
 There are many ways of answering the question of similarity which also depend 
-on the type of data you are comparing.
+on the type of data you are comparing. 
+
+Below lists the statistics which can be used to statistically measure 
+agreement. Click on the links (if applicable) to learn more.
 
 ## Continuous Data
 
@@ -38,11 +41,15 @@ on the type of data you are comparing.
 - Intra-class Correlation Coefficient (ICC)
 - Concordance Correlation Coefficient (CCC)
 - [Individual Equivalence Coefficient (IEC)](https://alisontelford.github.io/IEC.html)
-- Total Deviation Index (TDI)
-- Coverage Probability (CP)
+- [Total Deviation Index (TDI)](https://alisontelford.github.io/TDI_and_CP.html)
+- [Coverage Probability (CP)](https://alisontelford.github.io/TDI_and_CP.html)
 
 ## Non-Continuous Data
 
 - Overall Percentage Agreement
 - [Cohen's Kappa](https://alisontelford.github.io/Cohens_Kappa.html)
 - Krippendorf's Alpha
+
+
+
+[Back](https://alisontelford.github.io)
