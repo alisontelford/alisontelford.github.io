@@ -11,4 +11,6 @@ I obtained my PhD in statistics at the University of Leeds in 2019 and have work
 
 <a href="https://alisontelford.github.io/MatchingMethods.html">Matching Methods</a>
 
+<a href="https://alisontelford.github.io/ComparingAICs.html">Comparing AICs</a>
+
 ## R Help Pages
