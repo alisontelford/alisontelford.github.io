@@ -1,0 +1,390 @@
+---
+title: "Total Deviation Index (TDI) and Coverage Probability (CP)"
+author: "Alison Telford"
+date: '2023-01-10'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, error = FALSE, warning = FALSE)
+list.of.packages <- c("tidyverse", "devtools", "kableExtra", "readxl", "MatchIt", "MASS")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)){install.packages(new.packages)}
+suppressMessages(invisible(lapply(list.of.packages, require, character.only = TRUE)))
+```
+
+# Definition
+
+[Stuart (2010)](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2943670/pdf/nihms200640.pdf)
+defines matching to be "any method that aims to equate (or "balance") the 
+distribution of covariates in the treated and control groups".
+
+# Motivation for Matching
+
+Let’s say we want to test the hypothesis that how cloudy it is outside effects 
+the number of ice cream sales on a single day. We have collected the following 
+data:
+
+```{r}
+IceCream = data.frame(N = c(32, 1, 0, 27, 2, 0, 30, 18, 19, 3, 1, 1, 21, 20, 0, 
+                            24, 26, 1, 27, 0),
+                      Cloudy = c("No", "Yes", "Yes", "No", "Yes", "Yes", "No", 
+                                 "No", "No", "Yes", "Yes", "Yes", "No", "No", 
+                                 "Yes", "No", "No", "Yes", "No", "Yes"))
+kbl(IceCream, align = 'c', booktabs = T) %>% 
+  kable_styling(bootstrap_options = "striped")
+```
+
+As you can see, we managed to collect data on the number of ice cream sales 
+for 10 cloudy days and 10 non-cloudy days. We can plot the data as box plots 
+below:
+
+```{r}
+ggplot(IceCream, aes(x = Cloudy, y = N, color = Cloudy)) +
+  geom_boxplot() +
+  labs(y = "Number of Ice Creams sold") +
+  theme_bw()
+```
+
+Clearly, there is strong evidence to suggest that the number of ice cream sales 
+per day is definitely effected by how cloudy it is outside.
+
+To test this statistically, we can perform a two sample Wilcox Test (not a 
+t-test here as our data is not quite normally distributed). Our null hypothesis 
+is that the means of the two groups are the same. We can perform this test in 
+R using the following code:
+
+```{r, echo = T}
+Cloudy = IceCream %>% 
+  filter(Cloudy == "Yes") %>% 
+  pull(N)
+
+NotCloudy = IceCream %>% 
+  filter(Cloudy == "No") %>% 
+  pull(N)
+
+wilcox.test(Cloudy, NotCloudy, paired = FALSE)
+```
+
+Performing this test gives a p-value of 0.0001621, thus we can conclude that 
+the cloudier the weather, the less ice creams are sold.
+
+### So what's the problem?
+
+What if I now gave you some more information. Whilst we were recording the data, 
+we also made note of the month in which we counted the number of ice cream 
+sales for each day.
+
+```{r}
+IceCream = IceCream %>% 
+  mutate(Month = c("August",
+                   "January",
+                   "January",
+                   "August",
+                   "January",
+                   "January",
+                   "August",
+                   "August",
+                   "August",
+                   "January",
+                   "January",
+                   "January",
+                   "August",
+                   "August",
+                   "January",
+                   "August",
+                   "August",
+                   "January",
+                   "August",
+                   "January"))
+kbl(IceCream, align = 'c', booktabs = T) %>% 
+  kable_styling(bootstrap_options = "striped")
+```
+
+So what’s wrong with our conclusion? Well, does how cloudy it is really affect 
+how many ice creams are sold? If we had a bright sunny day in January, would we 
+expect the same numbers of ice creams sold on a non-cloudy day in August? 
+Probably not. 
+
+So how can we still test our hypothesis? We’re pressured on time so we can’t go 
+and collect more data, what can we do? Well, the good news is we have seen that 
+another study group has also collected data and has recorded the number of ice 
+creams sold per day, whether it was cloudy or not and the month at time of 
+collection. They have lots of data, specifically on the number of ice cream 
+sales per day on cloudy days in the month of August. So we can perform 
+“Matching”.
+
+# Types of Matching
+
+There are many different types of matching described in the literature 
+(to go through all of them would be a PhD thesis in itself). For this page I 
+shall focus on Exact Matching and it’s offspring Coarsened Exact Matching (CEM).
+
+In general however, matching algorithms follow the following steps:
+
+\begin{itemize}
+  \item{Define “closeness”: the distance measure used to determine whether an 
+individual is a good match for another,}
+  \item{Implementing a matching method, given that measure of closeness,}
+  \item{Assessing the quality of the matching (and maybe repeating step 1. and 
+2. if the matching is not sufficient),}
+  \item{Analysis of the data on matched samples.}
+\end{itemize}
+
+## Exact Matching
+
+### Step 1: Define "closeness"
+
+For Exact Matching, the distance measure between two individuals $i$ and $j$ is
+defined as:
+$$
+D_{ij} = 
+\begin{cases}
+0,~~~~~ \textrm{if } X_i = X_j\\
+\infty, ~~~ \textrm{if } X_i \neq X_j
+\end{cases}
+$$
+
+Essentially, we only consider two individuals to be matched if they have 
+identical covariate values.
+
+Now, the next question is how we decide which covariates to match on. Ideally 
+all covariates related to both the outcome and the variable of interest should 
+be considered in the definition of the distance measure. 
+
+Never use the outcome variable in the definition for matching. Variables should 
+ideally be chosen prior to any knowledge on the outcome. 
+
+For Exact Matching, the more variables chosen to match on, means you are less 
+likely to obtain matches and therefore you would end up throwing away much of 
+your data. So ensure you select the variables you feel are most related to the 
+outcome and variable of interest.
+
+#### Ice Cream Example
+
+The study owners have decided to perform matching on the Month variable. 
+They believe this variable is directly related to whether it is cloudy outside 
+as well as the number of ice cream sales recorded per day.
+
+### Step2: Implement a Matching Method
+
+Probably the easiest and most common matching method is the “k:1 Nearest 
+Neighbour Matching”. Breaking this down, “k:1” means that we would select k 
+matched individuals to every one individual in our sample. “Nearest Neighbour” 
+refers to selecting individuals who have the smallest distance between itself 
+and those in our sample. For exact matching this essentially means those with 
+the same covariate values.
+
+#### How do we choose k?
+
+The choice of k would depend on a number of factors;
+
+- What final analysis are you planning to perform? Will increasing your sample 
+size increase the power of your test?
+- How many “good” matches per observation. For some distance measures (not 
+including Exact Matching) including more than one match is only including 
+further matches with a larger distance away and could be adding poor matches 
+into your sample leading to the introduction of bias.
+
+However, for exact matching, k does not need to be specified as all your 
+matches will be “good”. Thus including all matches will not remove value to the 
+analysis.
+
+#### Ice Cream Example
+
+Let’s perform the matching. For the purpose of the example, we shall assume 
+that the additional data source studied the number of ice cream sales on 100 
+cloudy days in August (obtained over multiple years). For the purpose of this 
+example, we shall simulate this data to be normally distributed with mean 24 
+and variance 8.
+
+We could do the matching by hand, but we shall instead take advantage of a 
+package called “MatchIt” in R.
+
+```{r, echo = T}
+set.seed(1)
+Additional_IceCream = data.frame(N = round(rnorm(100, 24, 8)),
+                                 Cloudy = rep("Yes", 100),
+                                 Month = rep("August", 100))
+
+IceCream_Merged = IceCream %>% 
+  bind_rows(Additional_IceCream) %>% 
+  mutate(Month = as.factor(Month))
+
+MatchedIceCream = match.data(matchit(Cloudy ~ Month, 
+                                 data = IceCream_Merged, 
+                                 method = "exact")) %>% 
+  dplyr::select(N, Cloudy, Month)
+
+ggplot(MatchedIceCream, aes(x = Cloudy, y = N, color = Cloudy)) +
+  geom_boxplot() +
+  labs(y = "Number of Ice Creams sold") +
+  theme_bw()
+```
+
+Finally, we can perform the Wilcox Test once more:
+
+```{r, echo = T}
+Cloudy = MatchedIceCream %>% 
+  filter(Cloudy == "Yes") %>% 
+  pull(N)
+
+NotCloudy = MatchedIceCream %>% 
+  filter(Cloudy == "No") %>% 
+  pull(N)
+
+wilcox.test(Cloudy, NotCloudy, paired = FALSE)
+```
+
+and obtain a p-value of 0.77. Thus we cannot reject the null hypothesis and 
+conclude that cloudy weather does not affect ice cream sales.
+
+## Coarsened Exact Matching (CEM)
+
+### Motivation
+
+So we’ve seen how exact matching works. But let’s back track to the start of 
+our Ice Cream example and consider that instead of recording the Month in 
+which we counted the number of sales of Ice Cream per day and noted whether 
+it was a cloudy day, we recorded the temperature in degrees fahrenheit. Thus 
+our data is now
+
+```{r}
+IceCream_withTemp = IceCream %>% 
+  mutate(Temperature = c(70, 39, 42, 83, 36, 45, 78, 68, 80, 33, 34, 49, 76, 
+                         86, 34, 72, 74, 42, 71, 38))
+
+kbl(IceCream_withTemp %>% 
+      dplyr::select(-Month), align = 'c', booktabs = T) %>% 
+  kable_styling(bootstrap_options = "striped")
+```
+
+Let’s also now assume that the second source of data did not just record the 
+number of ice cream sales on cloudy days in August, but cloudy days throughout 
+the year. (We will simulate the additional data by considering temperatures 
+distributed normally with mean 60 and variance 10 and ice cream sales 
+distributed normally with mean 10 and variance 12, we shall also assume a 
+correlation of 0.99 between the two data sets. To simulate this, we shall 
+use a multivariate normal distribution using the mvrnorm function from the 
+MASS library).
+
+If we were to repeat the Exact Matching using the following R code:
+
+```{r, echo = T}
+set.seed(10)
+sim_data = round(mvrnorm(n=100, mu = c(10, 60), Sigma = matrix(c(144, 119, 119, 100), nrow = 2)))
+
+Additional_IceCream = data.frame(N = ifelse(sim_data[,1] < 0, 0, sim_data[,1]),
+                                 Cloudy = rep("Yes", 100),
+                                 Temperature = sim_data[,2])
+
+IceCream_Merged = IceCream_withTemp %>% 
+  bind_rows(Additional_IceCream)
+
+MatchedIceCream = match.data(matchit(Cloudy ~ Temperature, 
+                                     data = IceCream_Merged, 
+                                     method = "exact")) %>% 
+  dplyr::select(N, Cloudy, Temperature)
+
+kbl(MatchedIceCream, align = 'c', booktabs = T) %>% 
+  kable_styling(bootstrap_options = "striped")
+```
+
+We would obtain a data set where only 5 of the non-cloudy days are matched to 
+cloudy days, thus leaving us with a very small sample size. To overcome this, 
+we can instead use Coarsened Exact Matching.
+
+#### How would Coarsened Exact Matching help?
+
+Recall that we had no issues when matching to months and not temperatures. 
+Why was that? It was simply because there were less values to match on. When 
+we were matching on Month, there would be multiple records in August, therefore 
+there’d be an abundance of potential matches. But for temperatures or indeed 
+any continuous measure, it’s less likely that you’ll have an abundance of 
+records with the exact same value, and in our case, temperature.
+
+So what can we do? Well it’s relatively simple, we simply need to group our 
+temperatures into bins (much like when you’re plotting a histogram or bar 
+chart). For example, we could choose to bin our temperatures into the following 
+bins:
+
+- 30-39
+- 40-49
+- 50-59
+- 60-69
+- 70-79
+- 80+
+
+Or something else. Choosing the width of the bins can be thought of as a trade 
+off between reintroducing bias and throwing away too much data. We’ve seen what 
+happens if we don’t bin the results (too much data is thrown away), but the 
+opposite end of the scale would be to have a single bin e.g. 30-100 
+encapsulating all the temperatures. In this scenario, all cloudy days will be 
+compared to non-cloudy days without taking temperature into account, thereby 
+re-introducing the bias of the variable temperature which we’ve seen plays a 
+big part in whether the comparison is significant or not. 
+
+Alternatively, the R package MatchIt will calculate the best bins for your 
+data, which is what we shall do for this example.
+
+#### Ice Cream Example
+
+Okay, let’s return to our ice cream example. We can apply Coarsened Exact 
+Matching using the following R code:
+
+```{r, echo = T}
+CoarseMatchedIceCream = match.data(matchit(Cloudy ~ Temperature, 
+                                     data = IceCream_Merged, 
+                                     method = "cem"))
+```
+
+We can view how the algorithm has decided to bin the temperatures by running
+
+```{r, echo = T}
+ggplot(CoarseMatchedIceCream, aes(x = Cloudy, y = N, color = Cloudy)) +
+  geom_boxplot() +
+  labs(y = "Number of Ice Creams sold") +
+  theme_bw()
+```
+
+You can see that the algorithm has chosen three bins for our temperatures, 
+matching with these groupings means none of the non-cloudy days are thrown 
+away and 30 cloudy day records are chosen as matches. We can plot the data and 
+perform the wilcox test as before using the following R code:
+
+```{r, echo = T}
+ggplot(CoarseMatchedIceCream, aes(x = Cloudy, y = N, color = Cloudy)) +
+  geom_boxplot() +
+  labs(y = "Number of Ice Creams sold") +
+  theme_bw()
+  
+Cloudy = CoarseMatchedIceCream %>% 
+  filter(Cloudy == "Yes") %>% 
+  pull(N)
+
+NotCloudy = CoarseMatchedIceCream %>% 
+  filter(Cloudy == "No") %>% 
+  pull(N)
+
+wilcox.test(Cloudy, NotCloudy, paired = FALSE)
+```
+
+The p-value from performing the Wilcox test is 0.88, therefore we do not reject 
+the null hypothesis and conclude that cloudy weather does not affect the number 
+of ice creams sold per day.
+
+# Alternatives to Matching Methods
+
+One alternative method to Matching would be to adjust for background variables 
+in a regression model. However, Stuart (2010) describes how Matching methods 
+have “a few key advantages over other approaches”, and claim that matching 
+methods and adjustment in regressions are best used in combination.
+
+A number of authors have shown that methods such as linear regression adjustment 
+can actually increase bias in the estimated treatment effect when the true 
+relationship between the covariate and outcome is even moderately non-linear, 
+especially when there are large differences in the means and variances of the 
+covariates in the treated and control groups.
+
+Of course matching also comes with its own disadvantages such as throwing away 
+data and in some cases not being able to obtain exact matchings. 
