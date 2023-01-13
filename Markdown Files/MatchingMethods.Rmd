@@ -1,5 +1,5 @@
 ---
-title: "Total Deviation Index (TDI) and Coverage Probability (CP)"
+title: "Matching Methods"
 author: "Alison Telford"
 date: '2023-01-10'
 output: html_document
