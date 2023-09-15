@@ -49,22 +49,19 @@ hypothesis impossible.
 Instead, consider formulating two one-sided hypothesis tests for some
 threshold $\delta$ as follows;
 
-\begin{itemize}
-\item{
+1.
   $$
   \textrm{H}_0: \mu_x - \mu_y \geq \delta \\
   \textrm{vs} \\
   \textrm{H}_1: \mu_x - \mu_y < \delta
   $$
-}
-\item{
+2.
   $$
   \textrm{H}_0: \mu_x - \mu_y \leq -\delta \\
   \textrm{vs} \\
   \textrm{H}_1: \mu_x - \mu_y > -\delta
   $$
-}
-\end{itemize}
+
 Then a rejection of both null hypotheses would conclude
 $$
 -\delta < \mu_x - \mu_y < \delta
